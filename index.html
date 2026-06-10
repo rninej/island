@@ -949,7 +949,7 @@
             } else bobPhase *= 0.9;
             camera.position.set(newX, Math.max(groundY + 1.6 + playerYOffset + bob, 0.2), newZ);
 
-           // Portal detection — step on public → /public, private → /private
+         // Portal detection — step on public → /public, private → /private
 const px = camera.position.x - 0; // houseGroup is at world origin
 const pz = camera.position.z - 0;
 
@@ -957,11 +957,11 @@ const publicDist = Math.sqrt((px - (-1.2)) ** 2 + (pz - (-0.2)) ** 2);
 const privateDist = Math.sqrt((px - 1.2) ** 2 + (pz - (-0.2)) ** 2);
 
 if (publicDist < 0.9) {
-    window.location.href = window.location.origin + 'island/public.html';
+    window.location.href = window.location.origin + '/island/public.html';
 }
 
 if (privateDist < 0.9) {
-    window.location.href = window.location.origin + 'island/private.html';
+    window.location.href = window.location.origin + '/island/private.html';
 }
 
             // Water animation
