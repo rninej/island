@@ -954,8 +954,8 @@
             const pz = camera.position.z - 0;
             const publicDist = Math.sqrt((px - (-1.2)) ** 2 + (pz - (-0.2)) ** 2);
             const privateDist = Math.sqrt((px - 1.2) ** 2 + (pz - (-0.2)) ** 2);
-            if (publicDist < 0.9) { window.location.href = '/public'; }
-            if (privateDist < 0.9) { window.location.href = '/private'; }
+            if (publicDist < 0.9) { window.location.href = '/public.html'; }
+            if (privateDist < 0.9) { window.location.href = '/private.html'; }
 
             // Water animation
             const posArr = waterGeometry.attributes.position.array;
