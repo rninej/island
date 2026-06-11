@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>The Backrooms • Mobile</title>
+  <title>The Backrooms • Mobile Experience</title>
   <style>
     * {
       margin: 0;
@@ -19,18 +19,20 @@
     
     body {
       overflow: hidden;
-      background: #1a1a1a;
+      background: #0a0a0a;
       font-family: 'Courier New', monospace;
-      touch-action: none;
+      touch-action: none;          /* kill all default scrolling/panning */
       position: fixed;
       width: 100%;
       height: 100%;
+      overscroll-behavior: none;
     }
 
     #gameCanvas {
       display: block;
       width: 100%;
       height: 100%;
+      touch-action: none;
     }
 
     #vignette {
@@ -39,7 +41,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: radial-gradient(circle, transparent 60%, rgba(0,0,0,0.8) 100%);
+      background: radial-gradient(circle, transparent 55%, rgba(0,0,0,0.75) 100%);
       pointer-events: none;
       z-index: 5;
     }
@@ -49,65 +51,51 @@
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      color: #ffdd88;
-      background: rgba(20, 20, 20, 0.85);
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 12px;
+      color: #ffeeaa;
+      background: rgba(10, 10, 15, 0.85);
+      backdrop-filter: blur(6px);
+      padding: 8px 18px;
+      border-radius: 40px;
+      font-size: 13px;
+      font-weight: bold;
       letter-spacing: 0.5px;
       z-index: 10;
       pointer-events: none;
       white-space: nowrap;
-      border: 1px solid rgba(255,215,0,0.3);
+      border: 1px solid rgba(255,215,90,0.5);
+      font-family: monospace;
+      text-shadow: 0 0 4px rgba(0,0,0,0.5);
     }
 
-    /* Mobile touch controls */
-    #touchControls {
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 20;
-      display: none;
-      gap: 10px;
-    }
-
-    .touch-btn {
-      width: 50px;
-      height: 50px;
-      background: rgba(255, 255, 255, 0.15);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 12px;
-      color: white;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: auto;
-      backdrop-filter: blur(10px);
-    }
-
+    /* ----- MOBILE TOUCH ZONES (fixed, interactive) ----- */
     #joystickArea {
       position: fixed;
       bottom: 0;
       left: 0;
-      width: 50%;
-      height: 50%;
-      z-index: 15;
-      pointer-events: none;
+      width: 45%;
+      height: 45%;
+      z-index: 20;
+      pointer-events: auto;   /* ✨ FIXED: allow touch events */
+      touch-action: none;
     }
 
     #joystickBase {
       position: absolute;
-      bottom: 100px;
-      left: 80px;
-      width: 100px;
-      height: 100px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid rgba(255, 255, 255, 0.3);
+      bottom: 70px;
+      left: 70px;
+      width: 130px;
+      height: 130px;
+      background: rgba(30, 30, 40, 0.65);
+      backdrop-filter: blur(12px);
+      border: 2px solid rgba(255, 220, 150, 0.7);
       border-radius: 50%;
-      display: none;
-      pointer-events: none;
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
+      transition: transform 0.05s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      touch-action: none;
     }
 
     #joystickThumb {
@@ -115,38 +103,56 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 50px;
-      height: 50px;
-      background: rgba(255, 255, 255, 0.25);
+      width: 55px;
+      height: 55px;
+      background: rgba(255, 210, 120, 0.85);
       border-radius: 50%;
+      box-shadow: 0 0 8px gold;
       pointer-events: none;
+      transition: transform 0.02s linear;
+      border: 1px solid rgba(255,255,200,0.9);
     }
 
     #lookArea {
       position: fixed;
       top: 0;
       right: 0;
-      width: 50%;
+      width: 70%;
       height: 100%;
-      z-index: 15;
-      pointer-events: none;
+      z-index: 20;
+      pointer-events: auto;    /* ✨ FIXED: touch to look */
+      touch-action: none;
+      background: transparent;
     }
 
+    /* desktop small hint */
     @media (max-width: 768px) {
       #joystickBase {
-        display: block;
+        width: 120px;
+        height: 120px;
+        bottom: 55px;
+        left: 55px;
+      }
+      #joystickThumb {
+        width: 48px;
+        height: 48px;
       }
       #hud {
-        font-size: 10px;
-        padding: 6px 12px;
-        bottom: 10px;
+        font-size: 11px;
+        bottom: 16px;
+        padding: 6px 14px;
       }
+    }
+
+    /* prevent any accidental highlight */
+    canvas, div, body {
+      -webkit-tap-highlight-color: transparent;
     }
   </style>
 </head>
 <body>
   <div id="vignette"></div>
-  <div id="hud">📱 TAP TO START • DRAG TO LOOK</div>
+  <div id="hud">👆 DRAG RIGHT SIDE TO LOOK • LEFT JOYSTICK TO MOVE</div>
   
   <div id="joystickArea">
     <div id="joystickBase">
@@ -168,361 +174,494 @@
   <script type="module">
     import * as THREE from 'three';
 
-    // ---------- MOBILE-OPTIMIZED SCENE ----------
+    // ----------------------------------------------
+    // 1. SCENE, CAMERA, RENDERER (optimized for mobile)
+    // ----------------------------------------------
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x2a2a2a);
-    scene.fog = new THREE.Fog(0x2a2a2a, 12, 45);
+    scene.background = new THREE.Color(0x1a1a22);
+    scene.fog = new THREE.FogExp2(0x1a1a22, 0.028);  // smooth fading
 
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 70);
-    camera.position.set(0, 1.6, 0);
-
+    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 55);
+    camera.position.set(0, 1.65, 0);
+    
     const renderer = new THREE.WebGLRenderer({ 
-      antialias: false,
+      antialias: true,
       powerPreference: "high-performance",
-      precision: "mediump"
+      alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.domElement.id = 'gameCanvas';
     document.body.appendChild(renderer.domElement);
-
-    // Simple lighting
-    const ambientLight = new THREE.AmbientLight(0xfff5e6, 1.0);
-    scene.add(ambientLight);
-
-    // ---------- MATERIALS ----------
-    const wallMat = new THREE.MeshLambertMaterial({ color: 0xd4a853 });
-    const floorMat = new THREE.MeshLambertMaterial({ color: 0xc4956a });
-    const ceilingMat = new THREE.MeshLambertMaterial({ color: 0xe8d5a3 });
-    const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
-
-    // ---------- CONSTANTS ----------
-    const WALL_HEIGHT = 3.0;
-    const CELL_SIZE = 4.0;
-    const RENDER_DISTANCE = 24;
-    const UNLOAD_DISTANCE = 32;
     
-    // Geometries
+    // lighting to create moody backrooms atmosphere
+    const ambient = new THREE.AmbientLight(0x443c2c, 0.9);
+    scene.add(ambient);
+    const fillLight = new THREE.PointLight(0xc9aa6f, 0.5, 25);
+    fillLight.position.set(0, 2.5, 0);
+    scene.add(fillLight);
+    const backLight = new THREE.PointLight(0xa77b3e, 0.35);
+    backLight.position.set(0, 1.8, -3);
+    scene.add(backLight);
+    
+    // additional subtle directional glow
+    const dirLight = new THREE.DirectionalLight(0xffe6bb, 0.5);
+    dirLight.position.set(1, 2, 0.8);
+    scene.add(dirLight);
+    
+    // -------------------------------
+    // 2. MAZE CONSTANTS & MATERIALS
+    // -------------------------------
+    const WALL_HEIGHT = 3.05;
+    const CELL_SIZE = 4.0;
+    const RENDER_DIST = 22;
+    const UNLOAD_DIST = 30;
+    
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xcbaa74, roughness: 0.7, metalness: 0.1 });
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0xb8865b, roughness: 0.85, metalness: 0.05 });
+    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xdbbc8c, roughness: 0.8, emissive: 0x221100 });
+    const lightMat = new THREE.MeshStandardMaterial({ color: 0xffdd99, emissive: 0xcc8822, emissiveIntensity: 0.45 });
+    
+    // geometries for pooling
     const wallGeo = new THREE.BoxGeometry(CELL_SIZE, WALL_HEIGHT, CELL_SIZE);
     const floorGeo = new THREE.PlaneGeometry(CELL_SIZE, CELL_SIZE);
-    const lightGeo = new THREE.BoxGeometry(1.0, 0.05, 0.2);
-
-    // Object pools
+    const lightGeo = new THREE.BoxGeometry(1.2, 0.08, 0.25);
+    
+    // object pools for performance
     const wallPool = [];
     const floorCeilingPool = [];
     const lightPool = [];
     
-    const activeObjects = new Map();
-    const allLights = [];
-
-    // ---------- POOLING ----------
+    const activeChunks = new Map();   // key "x,z" -> {floor, ceiling, wallMesh, lightMesh, cellX, cellZ}
+    const allFlickerLights = [];
+    
     function getWall() {
       if (wallPool.length) return wallPool.pop();
-      const m = new THREE.Mesh(wallGeo, wallMat);
-      scene.add(m);
-      return m;
+      const mesh = new THREE.Mesh(wallGeo, wallMat);
+      scene.add(mesh);
+      return mesh;
     }
-
-    function getFloorCeiling(isCeiling = false) {
+    
+    function getFloorOrCeiling(isCeiling = false) {
       if (floorCeilingPool.length) {
         const m = floorCeilingPool.pop();
         m.rotation.x = isCeiling ? Math.PI / 2 : -Math.PI / 2;
         return m;
       }
-      const m = new THREE.Mesh(floorGeo, isCeiling ? ceilingMat : floorMat);
+      const mat = isCeiling ? ceilingMat : floorMat;
+      const m = new THREE.Mesh(floorGeo, mat);
       m.rotation.x = isCeiling ? Math.PI / 2 : -Math.PI / 2;
       scene.add(m);
       return m;
     }
-
-    function getLight() {
+    
+    function getLightObject() {
       if (lightPool.length) return lightPool.pop();
       const m = new THREE.Mesh(lightGeo, lightMat);
       scene.add(m);
       return m;
     }
-
-    function returnObj(pool, obj) {
-      if (obj) {
-        obj.visible = false;
-        pool.push(obj);
-      }
+    
+    function recycleObj(pool, obj) {
+      if (!obj) return;
+      obj.visible = false;
+      pool.push(obj);
     }
-
-    // ---------- MAZE LOGIC ----------
+    
+    // ---------- MAZE LOGIC (deterministic, endless) ----------
     function isWallAt(cx, cz) {
+      // classic infinite maze: cells at even/even are always walls
       if (cx % 2 === 0 && cz % 2 === 0) return true;
       if (cx % 2 === 0 || cz % 2 === 0) {
-        return (Math.abs((cx * 374761393 + cz * 668265263) ^ 0x5bf03635) % 1000) < 380;
+        // randomized corridors but stable per coordinates
+        let hash = ((cx * 928371) ^ (cz * 692387)) & 0x7fffffff;
+        hash = (hash ^ (hash >>> 13)) * 0x9e3779b9;
+        return (hash & 0x3ff) < 400;   // ~39% wall density makes interesting maze
       }
       return false;
     }
-
-    // ---------- CHUNKS ----------
-    function generateChunk(cellX, cellZ) {
+    
+    // generate one chunk (cell)
+    function addChunk(cellX, cellZ) {
       const key = `${cellX},${cellZ}`;
-      if (activeObjects.has(key)) return;
-
-      const wx = cellX * CELL_SIZE;
-      const wz = cellZ * CELL_SIZE;
+      if (activeChunks.has(key)) return;
+      
+      const worldX = cellX * CELL_SIZE;
+      const worldZ = cellZ * CELL_SIZE;
       const isWall = isWallAt(cellX, cellZ);
-
-      const floor = getFloorCeiling(false);
-      floor.position.set(wx, 0.01, wz);
-      floor.visible = true;
-
-      const ceiling = getFloorCeiling(true);
-      ceiling.position.set(wx, WALL_HEIGHT - 0.01, wz);
-      ceiling.visible = true;
-
-      const chunk = { cellX, cellZ, floor, ceiling, wall: null, light: null };
-
+      
+      const floorMesh = getFloorOrCeiling(false);
+      floorMesh.position.set(worldX, 0.02, worldZ);
+      floorMesh.visible = true;
+      
+      const ceilingMesh = getFloorOrCeiling(true);
+      ceilingMesh.position.set(worldX, WALL_HEIGHT - 0.02, worldZ);
+      ceilingMesh.visible = true;
+      
+      let wallMesh = null;
+      let lightMesh = null;
+      
       if (isWall) {
-        const wall = getWall();
-        wall.position.set(wx, WALL_HEIGHT / 2, wz);
-        wall.visible = true;
-        chunk.wall = wall;
+        wallMesh = getWall();
+        wallMesh.position.set(worldX, WALL_HEIGHT / 2, worldZ);
+        wallMesh.visible = true;
       } else {
-        const light = getLight();
-        light.position.set(wx, WALL_HEIGHT - 0.15, wz);
-        light.visible = true;
-        chunk.light = light;
-        allLights.push(light);
+        lightMesh = getLightObject();
+        lightMesh.position.set(worldX, WALL_HEIGHT - 0.18, worldZ);
+        lightMesh.visible = true;
+        allFlickerLights.push(lightMesh);
       }
-
-      activeObjects.set(key, chunk);
+      
+      activeChunks.set(key, {
+        cellX, cellZ,
+        floor: floorMesh,
+        ceiling: ceilingMesh,
+        wall: wallMesh,
+        light: lightMesh
+      });
     }
-
+    
     function removeChunk(key) {
-      const c = activeObjects.get(key);
-      if (!c) return;
-      returnObj(floorCeilingPool, c.floor);
-      returnObj(floorCeilingPool, c.ceiling);
-      if (c.wall) returnObj(wallPool, c.wall);
-      if (c.light) {
-        const i = allLights.indexOf(c.light);
-        if (i !== -1) allLights.splice(i, 1);
-        returnObj(lightPool, c.light);
+      const chunk = activeChunks.get(key);
+      if (!chunk) return;
+      recycleObj(floorCeilingPool, chunk.floor);
+      recycleObj(floorCeilingPool, chunk.ceiling);
+      if (chunk.wall) recycleObj(wallPool, chunk.wall);
+      if (chunk.light) {
+        const idx = allFlickerLights.indexOf(chunk.light);
+        if (idx !== -1) allFlickerLights.splice(idx, 1);
+        recycleObj(lightPool, chunk.light);
       }
-      activeObjects.delete(key);
+      activeChunks.delete(key);
     }
-
-    function updateChunks(px, pz) {
-      const ccx = Math.round(px / CELL_SIZE);
-      const ccz = Math.round(pz / CELL_SIZE);
-      const rc = Math.ceil(RENDER_DISTANCE / CELL_SIZE) + 1;
-      const uc = Math.ceil(UNLOAD_DISTANCE / CELL_SIZE) + 1;
-
-      for (let dx = -rc; dx <= rc; dx++) {
-        for (let dz = -rc; dz <= rc; dz++) {
-          const cx = ccx + dx;
-          const cz = ccz + dz;
-          if (Math.hypot(cx * CELL_SIZE - px, cz * CELL_SIZE - pz) <= RENDER_DISTANCE) {
-            generateChunk(cx, cz);
+    
+    function updateChunksAround(px, pz) {
+      const centerCellX = Math.floor(px / CELL_SIZE);
+      const centerCellZ = Math.floor(pz / CELL_SIZE);
+      const radCells = Math.ceil(RENDER_DIST / CELL_SIZE) + 1;
+      const unloadRad = Math.ceil(UNLOAD_DIST / CELL_SIZE) + 2;
+      
+      // load nearby
+      for (let dx = -radCells; dx <= radCells; dx++) {
+        for (let dz = -radCells; dz <= radCells; dz++) {
+          const cx = centerCellX + dx;
+          const cz = centerCellZ + dz;
+          const wx = cx * CELL_SIZE;
+          const wz = cz * CELL_SIZE;
+          const distToPlayer = Math.hypot(wx - px, wz - pz);
+          if (distToPlayer <= RENDER_DIST) {
+            addChunk(cx, cz);
           }
         }
       }
-
-      const toRemove = [];
-      for (const [key, c] of activeObjects) {
-        if (Math.hypot(c.cellX * CELL_SIZE - px, c.cellZ * CELL_SIZE - pz) > UNLOAD_DISTANCE) {
-          toRemove.push(key);
+      
+      // unload far chunks
+      const toDelete = [];
+      for (const [key, chunk] of activeChunks) {
+        const wx = chunk.cellX * CELL_SIZE;
+        const wz = chunk.cellZ * CELL_SIZE;
+        if (Math.hypot(wx - px, wz - pz) > UNLOAD_DIST) {
+          toDelete.push(key);
         }
       }
-      toRemove.forEach(k => removeChunk(k));
+      toDelete.forEach(k => removeChunk(k));
     }
-
-    // ---------- MOBILE CONTROLS ----------
-    const hud = document.getElementById('hud');
+    
+    // ------------------------------
+    // 3. COLLISION (wall & bounds)
+    // ------------------------------
+    function isPositionValid(x, z, radius = 0.32) {
+      const cellX = Math.floor(x / CELL_SIZE);
+      const cellZ = Math.floor(z / CELL_SIZE);
+      const margin = 0.25;
+      const checkCells = [
+        [cellX, cellZ],
+        [Math.floor((x - radius) / CELL_SIZE), Math.floor((z - radius) / CELL_SIZE)],
+        [Math.floor((x + radius) / CELL_SIZE), Math.floor((z - radius) / CELL_SIZE)],
+        [Math.floor((x - radius) / CELL_SIZE), Math.floor((z + radius) / CELL_SIZE)],
+        [Math.floor((x + radius) / CELL_SIZE), Math.floor((z + radius) / CELL_SIZE)]
+      ];
+      for (let [cx, cz] of checkCells) {
+        if (isWallAt(cx, cz)) {
+          const wx = cx * CELL_SIZE;
+          const wz = cz * CELL_SIZE;
+          const half = CELL_SIZE / 2;
+          const dx = Math.abs(x - wx);
+          const dz = Math.abs(z - wz);
+          if (dx < half + radius && dz < half + radius) return false;
+        }
+      }
+      return true;
+    }
+    
+    // ------------------------------
+    // 4. MOBILE CONTROLS (FULLY FIXED)
+    // ------------------------------
+    let moveVector = { x: 0, z: 0 };
+    let cameraEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+    camera.rotation.order = 'YXZ';
+    
+    // joystick state
+    let joystickActive = false;
+    let joystickPointerId = null;
     const joystickBase = document.getElementById('joystickBase');
     const joystickThumb = document.getElementById('joystickThumb');
-    const lookArea = document.getElementById('lookArea');
-
-    let moveDirection = { x: 0, z: 0 };
-    let isLocked = false;
-    let joystickActive = false;
-    let joystickId = null;
-    let lookId = null;
-    let euler = new THREE.Euler(0, 0, 0, 'YXZ');
-    const PI_2 = Math.PI / 2;
-
-    // Pointer lock for desktop fallback
-    renderer.domElement.addEventListener('click', () => {
-      if (!isLocked) {
-        renderer.domElement.requestPointerLock();
-      }
-    });
-
-    document.addEventListener('pointerlockchange', () => {
-      isLocked = document.pointerLockElement === renderer.domElement;
-      if (isLocked) {
-        hud.innerHTML = '🎯 MOVING • DRAG TO LOOK';
-      }
-    });
-
-    // Desktop mouse look
-    document.addEventListener('mousemove', (e) => {
-      if (isLocked) {
-        euler.setFromQuaternion(camera.quaternion);
-        euler.y -= e.movementX * 0.002;
-        euler.x -= e.movementY * 0.002;
-        euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
-        camera.quaternion.setFromEuler(euler);
-      }
-    });
-
-    // Touch joystick
-    joystickBase.addEventListener('pointerdown', (e) => {
-      joystickActive = true;
-      joystickId = e.pointerId;
-      joystickBase.setPointerCapture(e.pointerId);
-      updateJoystick(e);
-    });
-
-    joystickBase.addEventListener('pointermove', (e) => {
-      if (joystickActive && e.pointerId === joystickId) {
-        updateJoystick(e);
-      }
-    });
-
-    joystickBase.addEventListener('pointerup', (e) => {
-      joystickActive = false;
-      joystickId = null;
-      moveDirection.x = 0;
-      moveDirection.z = 0;
-      joystickThumb.style.transform = 'translate(-50%, -50%)';
-    });
-
-    joystickBase.addEventListener('pointerleave', () => {
-      if (joystickActive) {
-        joystickActive = false;
-        moveDirection.x = 0;
-        moveDirection.z = 0;
-        joystickThumb.style.transform = 'translate(-50%, -50%)';
-      }
-    });
-
-    function updateJoystick(e) {
+    let joystickCenter = { x: 0, y: 0 };
+    const MAX_JOY_DIST = 55; // px
+    
+    function updateJoystickPosition(clientX, clientY) {
       const rect = joystickBase.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      let dx = e.clientX - cx;
-      let dy = e.clientY - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = rect.width / 2;
-      
-      if (dist > maxDist) {
-        dx = (dx / dist) * maxDist;
-        dy = (dy / dist) * maxDist;
+      const baseCenterX = rect.left + rect.width / 2;
+      const baseCenterY = rect.top + rect.height / 2;
+      let dx = clientX - baseCenterX;
+      let dy = clientY - baseCenterY;
+      const distance = Math.hypot(dx, dy);
+      let clampedX = dx, clampedY = dy;
+      if (distance > MAX_JOY_DIST) {
+        clampedX = (dx / distance) * MAX_JOY_DIST;
+        clampedY = (dy / distance) * MAX_JOY_DIST;
       }
-      
-      joystickThumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-      moveDirection.x = dx / maxDist;
-      moveDirection.z = -dy / maxDist;
+      joystickThumb.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
+      const normX = clampedX / MAX_JOY_DIST;
+      const normY = clampedY / MAX_JOY_DIST;
+      moveVector.x = normX;
+      moveVector.z = -normY;   // forward/back based on Y
     }
-
-    // Touch look
-    lookArea.addEventListener('pointerdown', (e) => {
-      lookId = e.pointerId;
-      lookArea.setPointerCapture(e.pointerId);
+    
+    function resetJoystick() {
+      moveVector.x = 0;
+      moveVector.z = 0;
+      joystickThumb.style.transform = 'translate(-50%, -50%)';
+      joystickActive = false;
+      joystickPointerId = null;
+    }
+    
+    // Joystick event handlers
+    joystickBase.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      joystickActive = true;
+      joystickPointerId = e.pointerId;
+      joystickBase.setPointerCapture(e.pointerId);
+      const rect = joystickBase.getBoundingClientRect();
+      joystickCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+      updateJoystickPosition(e.clientX, e.clientY);
     });
-
-    lookArea.addEventListener('pointermove', (e) => {
-      if (e.pointerId === lookId) {
-        euler.setFromQuaternion(camera.quaternion);
-        euler.y -= e.movementX * 0.003;
-        euler.x -= e.movementY * 0.003;
-        euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
-        camera.quaternion.setFromEuler(euler);
+    
+    joystickBase.addEventListener('pointermove', (e) => {
+      if (joystickActive && e.pointerId === joystickPointerId) {
+        e.preventDefault();
+        updateJoystickPosition(e.clientX, e.clientY);
       }
     });
-
-    lookArea.addEventListener('pointerup', () => {
-      lookId = null;
+    
+    joystickBase.addEventListener('pointerup', (e) => {
+      if (joystickActive && e.pointerId === joystickPointerId) {
+        resetJoystick();
+        joystickBase.releasePointerCapture(e.pointerId);
+      }
     });
-
-    // Keyboard
-    const keys = {};
-    document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
-    document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
-
-    // Initial chunks
-    updateChunks(0, 0);
-
-    // ---------- GAME LOOP ----------
-    const clock = new THREE.Clock();
-    let flickerTimer = 0;
-    let lastChunkUpdate = 0;
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      const dt = Math.min(clock.getDelta(), 0.1);
-
-      // Movement
-      let mx = moveDirection.x;
-      let mz = moveDirection.z;
-      
-      if (keys.w) mz -= 1;
-      if (keys.s) mz += 1;
-      if (keys.a) mx -= 1;
-      if (keys.d) mx += 1;
-
-      if (mx !== 0 || mz !== 0) {
-        const len = Math.sqrt(mx * mx + mz * mz);
-        mx /= len;
-        mz /= len;
-        
-        const speed = 4.5 * dt;
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-        
-        camera.position.x += (forward.x * -mz + right.x * mx) * speed;
-        camera.position.z += (forward.z * -mz + right.z * mx) * speed;
-        
-        camera.position.y = 1.6 + Math.sin(Date.now() * 0.01) * 0.02;
-      } else {
-        camera.position.y += (1.6 - camera.position.y) * 0.1;
-      }
-
-      // Chunk update (throttled)
-      const now = performance.now();
-      if (now - lastChunkUpdate > 400) {
-        updateChunks(camera.position.x, camera.position.z);
-        lastChunkUpdate = now;
-      }
-
-      // Light flicker
-      flickerTimer -= dt;
-      if (flickerTimer <= 0 && allLights.length > 0) {
-        const light = allLights[Math.floor(Math.random() * allLights.length)];
-        if (light.material) {
-          light.material.color.setHex(0x888844);
-          setTimeout(() => {
-            if (light.material) light.material.color.setHex(0xffffaa);
-          }, 80);
+    
+    joystickBase.addEventListener('pointercancel', () => resetJoystick());
+    
+    // ----- LOOK AREA (drag to rotate camera, with proper delta detection) -----
+    const lookZone = document.getElementById('lookArea');
+    let lookActive = false;
+    let lookPointerId = null;
+    let lastLookX = 0, lastLookY = 0;
+    const LOOK_SENS = 0.007;
+    
+    lookZone.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      lookActive = true;
+      lookPointerId = e.pointerId;
+      lastLookX = e.clientX;
+      lastLookY = e.clientY;
+      lookZone.setPointerCapture(e.pointerId);
+    });
+    
+    lookZone.addEventListener('pointermove', (e) => {
+      if (lookActive && e.pointerId === lookPointerId) {
+        e.preventDefault();
+        const deltaX = e.clientX - lastLookX;
+        const deltaY = e.clientY - lastLookY;
+        if (deltaX !== 0 || deltaY !== 0) {
+          cameraEuler.y -= deltaX * LOOK_SENS;
+          cameraEuler.x -= deltaY * LOOK_SENS;
+          // clamp vertical look to avoid gimbal/flip
+          cameraEuler.x = Math.max(-Math.PI / 2.4, Math.min(Math.PI / 2.4, cameraEuler.x));
+          camera.quaternion.setFromEuler(cameraEuler);
+          lastLookX = e.clientX;
+          lastLookY = e.clientY;
         }
-        flickerTimer = 0.2 + Math.random() * 0.4;
       }
-
-      renderer.render(scene, camera);
+    });
+    
+    lookZone.addEventListener('pointerup', (e) => {
+      if (lookActive && e.pointerId === lookPointerId) {
+        lookActive = false;
+        lookPointerId = null;
+        lookZone.releasePointerCapture(e.pointerId);
+      }
+    });
+    
+    lookZone.addEventListener('pointercancel', () => {
+      lookActive = false;
+      lookPointerId = null;
+    });
+    
+    // optional keyboard fallback for desktop debugging
+    const keyState = { w: false, s: false, a: false, d: false };
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || k === 's' || k === 'a' || k === 'd') {
+        keyState[k] = true;
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || k === 's' || k === 'a' || k === 'd') keyState[k] = false;
+    });
+    
+    // combine movement from joystick + keyboard
+    function getCombinedMove() {
+      let x = moveVector.x;
+      let z = moveVector.z;
+      if (keyState.w) z -= 1;
+      if (keyState.s) z += 1;
+      if (keyState.a) x -= 1;
+      if (keyState.d) x += 1;
+      const len = Math.hypot(x, z);
+      if (len > 0.01) {
+        x /= len;
+        z /= len;
+      }
+      return { x, z };
     }
-
+    
+    // -------------------------------------
+    // 5. ANIMATION LOOP + MOVEMENT + FLICKER
+    // -------------------------------------
+    let lastTimestamp = performance.now();
+    let flickerAcc = 0;
+    
+    // slight view bobbing (just for immersion)
+    let bobTime = 0;
+    
+    function movePlayer(deltaSec) {
+      const speed = 4.9; // meters per second
+      const { x: moveX, z: moveZ } = getCombinedMove();
+      if (moveX === 0 && moveZ === 0) return false;
+      
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      forward.y = 0; forward.normalize();
+      right.y = 0; right.normalize();
+      
+      let deltaMove = speed * deltaSec;
+      let newX = camera.position.x;
+      let newZ = camera.position.z;
+      const stepX = (forward.x * -moveZ + right.x * moveX) * deltaMove;
+      const stepZ = (forward.z * -moveZ + right.z * moveX) * deltaMove;
+      
+      if (stepX !== 0 || stepZ !== 0) {
+        // try X then Z with collision
+        let tryX = camera.position.x + stepX;
+        if (isPositionValid(tryX, camera.position.z, 0.35)) newX = tryX;
+        let tryZ = camera.position.z + stepZ;
+        if (isPositionValid(newX, tryZ, 0.35)) newZ = tryZ;
+        camera.position.x = newX;
+        camera.position.z = newZ;
+      }
+      return true;
+    }
+    
+    // initial chunk generation
+    updateChunksAround(0, 0);
+    
+    // animate light flicker (fluorescent mood)
+    function updateFlicker(delta) {
+      flickerAcc += delta;
+      if (flickerAcc > 0.12 && allFlickerLights.length) {
+        const randomLight = allFlickerLights[Math.floor(Math.random() * allFlickerLights.length)];
+        if (randomLight && randomLight.material) {
+          const originalIntensity = 0.45;
+          randomLight.material.emissiveIntensity = 0.2 + Math.random() * 0.65;
+          setTimeout(() => {
+            if (randomLight && randomLight.material) randomLight.material.emissiveIntensity = originalIntensity;
+          }, 65);
+        }
+        flickerAcc = 0;
+      }
+    }
+    
+    // simple idle breathing bob
+    let lastMoveFlag = false;
+    function updateBob(delta, isMoving) {
+      if (isMoving) {
+        bobTime += delta * 11;
+        const wave = Math.sin(bobTime) * 0.022;
+        camera.position.y = 1.63 + wave;
+      } else {
+        bobTime += delta * 3.5;
+        const wave = Math.sin(bobTime) * 0.006;
+        camera.position.y += (1.63 + wave - camera.position.y) * 0.2;
+      }
+    }
+    
+    // small star field? not needed but adds charm
+    // final animation driver
+    let lastChunkUpdateTime = 0;
+    
+    function animate() {
+      const now = performance.now();
+      let delta = Math.min(0.033, (now - lastTimestamp) / 1000);
+      if (delta <= 0) { delta = 0.016; }
+      lastTimestamp = now;
+      
+      // 1. movement & camera
+      const moved = movePlayer(delta);
+      updateBob(delta, moved);
+      
+      // 2. dynamic chunk streaming (cooldown to avoid spam)
+      if (now - lastChunkUpdateTime > 280) {
+        updateChunksAround(camera.position.x, camera.position.z);
+        lastChunkUpdateTime = now;
+      }
+      
+      // 3. flickering lights
+      updateFlicker(delta);
+      
+      // 4. subtle ambient light animation based on player movement
+      const t = performance.now() * 0.0025;
+      fillLight.intensity = 0.48 + Math.sin(t) * 0.05;
+      backLight.intensity = 0.3 + Math.cos(t * 0.7) * 0.07;
+      
+      // optional: small dust particles? not needed, but performance sweet
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    
+    // init and block all touch gestures globally
+    function blockGestures(e) {
+      e.preventDefault();
+    }
+    document.body.addEventListener('touchmove', blockGestures, { passive: false });
+    document.body.addEventListener('gesturestart', blockGestures);
+    document.body.addEventListener('gesturechange', blockGestures);
+    
+    // start experience
     animate();
-
-    // Resize handler
+    
+    // handle window resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
-
-    // Prevent zoom gestures
-    document.addEventListener('gesturestart', e => e.preventDefault());
-    document.addEventListener('gesturechange', e => e.preventDefault());
-    document.addEventListener('gestureend', e => e.preventDefault());
-
-    console.log('📱 Mobile Backrooms Ready - Tap & Drag');
+    
+    // small console hint for dev
+    console.log('✅ BACKROOMS MOBILE READY — tap right side to look, left joystick to move. Fully interactive.');
   </script>
 </body>
 </html>
