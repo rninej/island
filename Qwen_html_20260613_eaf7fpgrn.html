@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>The Backrooms</title>
+  <style>
+    :root {
+      --gold:#ffdd88; --gold-dim:rgba(255,215,0,0.3);
+      --panel:rgba(13,11,8,0.97); --border:rgba(255,215,0,0.22);
+      --red:#ff5555; --green:#55ff99;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;
+      -webkit-tap-highlight-color:transparent;
+      -webkit-touch-callout:none;user-select:none;}
+
+    body{overflow:hidden;background:#1a1a1a;font-family:'Courier New',monospace;
+         touch-action:none;position:fixed;width:100%;height:100%;}
+
+    #gameCanvas{display:block;width:100%;height:100%;}
+    #vignette{position:fixed;inset:0;background:radial-gradient(circle,transparent 60%,rgba(0,0,0,.8) 100%);pointer-events:none;z-index:5;}
+    #hud{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+      color:var(--gold);background:rgba(20,20,20,.85);padding:8px 16px;
+      border-radius:20px;font-size:12px;letter-spacing:.5px;z-index:10;
+      pointer-events:none;white-space:nowrap;border:1px solid var(--gold-dim);}
+
+    #joystickArea{position:fixed;bottom:0;left:0;width:50%;height:100%;z-index:15;pointer-events:none;}
+    #joystickBase{position:absolute;bottom:40px;left:40px;width:100px;height:100px;
+      background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);
+      border-radius:50%;display:none;pointer-events:auto;}
+    #joystickThumb{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:50px;height:50px;background:rgba(255,255,255,.25);border-radius:50%;pointer-events:none;}
+    #lookArea{position:fixed;top:0;right:0;width:50%;height:100%;z-index:15;pointer-events:auto;}
+    @media(max-width:1024px),(max-height:600px){
+      #joystickBase{display:block;}
+      #hud{font-size:10px;padding:6px 12px;bottom:10px;}
+    }
+
+    /* Account button always visible on top */
+    #accountBtn{position:fixed;top:14px;right:14px;z-index:300;
+      background:rgba(13,11,8,.92);border:1px solid var(--border);
+      color:var(--gold);border-radius:10px;padding:8px 14px;
+      font-family:inherit;font-size:12px;cursor:pointer;letter-spacing:.5px;display:block;}
+
+    #tapOverlay{position:fixed;inset:0;z-index:250;display:none;
+      align-items:center;justify-content:center;background:rgba(0,0,0,.6);cursor:pointer;}
+    #tapOverlay.show{display:flex;}
+    #tapOverlay span{color:var(--gold);font-family:inherit;font-size:18px;letter-spacing:1px;
+      border:1px solid var(--gold-dim);padding:18px 30px;border-radius:24px;
+      background:rgba(20,20,20,.9);text-align:center;pointer-events:none;}
+
+    .overlay{position:fixed;inset:0;z-index:200;display:none;
+      align-items:center;justify-content:center;
+      background:rgba(0,0,0,.75);backdrop-filter:blur(5px);}
+    .overlay.show{display:flex;}
+
+    .overlay-scroll{width:100%;height:100%;display:flex;align-items:flex-start;
+      justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding:20px 12px;overscroll-behavior:contain;}
+
+    .panel{background:var(--panel);border:1px solid var(--border);
+      border-radius:20px;padding:24px 20px;width:min(96vw,380px);
+      display:flex;flex-direction:column;gap:12px;flex-shrink:0;margin:auto;}
+    .panel h2{color:var(--gold);font-size:18px;letter-spacing:2px;
+      text-align:center;text-transform:uppercase;}
+    .panel p{color:#999;font-size:12px;text-align:center;line-height:1.6;}
+
+    .inp{background:rgba(255,255,255,.06);border:1px solid var(--border);
+      border-radius:10px;padding:13px 14px;color:#fff;font-family:inherit;
+      font-size:16px;width:100%;outline:none;transition:border .2s;
+      -webkit-user-select:text !important;user-select:text !important;
+      touch-action:manipulation !important;
+      -webkit-appearance:none;appearance:none;}
+    .inp:focus{border-color:var(--gold);}
+    .inp::placeholder{color:#444;}
+
+    .btn{padding:13px;border-radius:12px;border:none;font-family:inherit;
+      font-size:14px;font-weight:bold;letter-spacing:1px;cursor:pointer;
+      transition:opacity .15s,transform .1s;text-transform:uppercase;width:100%;
+      touch-action:manipulation !important;}
+    .btn:active{transform:scale(.97);opacity:.8;}
+    .btn-gold{background:var(--gold);color:#1a1400;}
+    .btn-outline{background:transparent;color:var(--gold);border:1px solid var(--gold-dim);}
+    .btn-sm{padding:9px;font-size:12px;border-radius:8px;}
+
+    .err{color:var(--red);font-size:12px;text-align:center;min-height:14px;}
+    .sep{border:none;border-top:1px solid var(--border);margin:2px 0;}
+    .row{display:flex;gap:10px;}
+    .row .btn{flex:1;}
+
+    #codeDisplay{font-size:40px;letter-spacing:10px;color:var(--gold);
+      text-align:center;background:rgba(255,215,0,.07);
+      border:1px solid var(--gold-dim);border-radius:12px;padding:14px;}
+    #playerList{list-style:none;display:flex;flex-direction:column;gap:8px;
+      max-height:160px;overflow-y:auto;}
+    #playerList li{display:flex;align-items:center;gap:10px;
+      background:rgba(255,255,255,.05);border-radius:8px;padding:9px 12px;
+      color:#ddd;font-size:13px;}
+    #playerList li .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+    #playerList li .crown{margin-left:auto;font-size:11px;color:var(--gold);}
+    .status-label{color:#777;font-size:11px;text-align:center;}
+
+    .player-label{position:fixed;pointer-events:none;z-index:20;
+      color:#fff;font-size:11px;font-family:'Courier New',monospace;
+      background:rgba(0,0,0,.55);padding:2px 7px;border-radius:6px;
+      transform:translate(-50%,-50%);white-space:nowrap;}
+
+    #joinCodeInput{text-align:center;letter-spacing:8px;font-size:28px;}
+    #codeDisplay{letter-spacing:12px;}
+
+    /* Toggle Switch CSS */
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--gold); }
+    input:checked + .slider:before { transform: translateX(20px); }
+  </style>
+</head>
+<body>
+
+<div id="vignette"></div>
+<div id="hud">THE BACKROOMS</div>
+<button id="accountBtn">👤 Account</button>
+
+<div id="tapOverlay"><span>📱 TAP TO ENTER<br>THE BACKROOMS</span></div>
+
+<!-- OVERLAY: LOADING -->
+<div class="overlay show" id="overlayLoading">
+  <div class="panel" style="align-items:center;">
+    <h2>The Backrooms</h2>
+    <p style="color:#666;">Connecting…</p>
+  </div>
+</div>
+
+<!-- OVERLAY: PARTY LOBBY -->
+<div class="overlay" id="overlayParty">
+  <div class="panel">
+    <h2>The Backrooms</h2>
+    <p>Playing as <span id="lobbyUsername" style="color:var(--gold)"></span></p>
+    <hr class="sep">
+    <div class="row">
+      <button class="btn btn-gold" id="btnMakeParty">🏠 Make Party</button>
+      <button class="btn btn-outline" id="btnJoinParty">🔗 Join Party</button>
+    </div>
+    <div id="joinSection" style="display:none;flex-direction:column;gap:10px;">
+      <input class="inp" id="joinCodeInput" maxlength="4" placeholder="0000"
+             inputmode="numeric" pattern="[0-9]*" type="text">
+      <button class="btn btn-gold" id="btnDoJoin">Join →</button>
+      <p class="err" id="joinErr"></p>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: UNIFIED ACCOUNT -->
+<div class="overlay" id="overlayAccount">
+  <div class="overlay-scroll">
+    <div class="panel">
+      <h2>Account</h2>
+      <p>Enter a username and password.<br>We'll log you in or create your account automatically.</p>
+      
+      <input class="inp" id="accUser" placeholder="Username (3–16 chars)" maxlength="16"
+             autocomplete="username" autocorrect="off" autocapitalize="none" spellcheck="false">
+      <input class="inp" id="accPass" type="password" placeholder="Password (min 6 chars)"
+             autocomplete="current-password">
+      
+      <p class="err" id="accErr"></p>
+      <button class="btn btn-gold" id="btnSubmitAcc">Continue</button>
+      <button class="btn btn-sm btn-outline" id="btnCloseAccount">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: WAITING ROOM -->
+<div class="overlay" id="overlayWaiting">
+  <div class="panel">
+    <h2 id="waitingTitle">Party Room</h2>
+    <p>Share this code with friends:</p>
+    <div id="codeDisplay">----</div>
+    <ul id="playerList"></ul>
+    
+    <!-- HOST SETTINGS -->
+    <div id="hostSettings" style="display:none; flex-direction:column; gap:15px; margin-top:10px; padding-top:15px; border-top:1px solid var(--border);">
+      <div style="display:flex; align-items:center; justify-content:space-between; color:var(--gold); font-size:13px;">
+        <span>Public Joining</span>
+        <label class="switch">
+          <input type="checkbox" id="togglePublic">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; color:var(--gold); font-size:13px;">
+        <span>Imposters</span>
+        <input type="number" id="imposterCountInput" min="1" max="10" value="1" class="inp" style="width:60px; padding:8px; text-align:center; font-size:14px;">
+      </div>
+    </div>
+
+    <p class="status-label" id="waitStatus">Waiting for host to start…</p>
+    <button class="btn btn-gold" id="btnStartGame" style="display:none;">▶ Start Game</button>
+    <button class="btn btn-sm btn-outline" id="btnLeaveParty">Leave Party</button>
+  </div>
+</div>
+
+<!-- OVERLAY: IMPOSTER ROULETTE -->
+<div class="overlay" id="overlayImposter">
+  <div class="panel" style="align-items:center; min-height:300px;">
+    <h2>Who is the Imposter?</h2>
+    <div id="rouletteList" style="display:flex; flex-direction:column; gap:10px; width:100%; margin:20px 0; max-height: 300px; overflow-y:auto;"></div>
+    <p id="rouletteStatus" style="color:var(--gold); font-size:16px; font-weight:bold; min-height:24px; text-align:center;"></p>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div id="joystickArea">
+  <div id="joystickBase"><div id="joystickThumb"></div></div>
+</div>
+<div id="lookArea"></div>
+
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.157.0/build/three.module.js"}}</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getDatabase, ref, set, get, onValue, off, remove, update, onDisconnect }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+// ── FIREBASE ──────────────────────────────────────────────
+const app = initializeApp({
+  apiKey:"AIzaSyBy9MKhNOUjE55_izMcfHPnjIWHW8k8QtM",
+  authDomain:"island-51c8b.firebaseapp.com",
+  databaseURL:"https://island-51c8b-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"island-51c8b",
+  storageBucket:"island-51c8b.firebasestorage.app",
+  messagingSenderId:"346334983204",
+  appId:"1:346334983204:web:a31173e4c31c965a0714b1"
+});
+const db = getDatabase(app);
+
+// ── HELPERS ───────────────────────────────────────────────
+const $    = id => document.getElementById(id);
+const show = id => { const e=$(id); e.style.display=''; e.classList.add('show'); };
+const hide = id => { const e=$(id); e.style.display='none'; e.classList.remove('show'); };
+
+function randCode(){ return String(Math.floor(1000+Math.random()*9000)); }
+
+// ── PLAYER COLOURS ────────────────────────────────────────
+const COLORS=[0xff4444,0x44aaff,0x55ff99,0xff8844,0xcc44ff,0xffff44,0x44ffff,0xff44cc];
+function colorForIdx(i){ return COLORS[i%COLORS.length]; }
+function hexCss(n){ return '#'+n.toString(16).padStart(6,'0'); }
+
+// ── STATE ─────────────────────────────────────────────────
+let localUser=null;
+let partyCode=null, isHost=false, gameStarted=false;
+let partyRef=null, myPosRef=null, partyListener=null;
+
+// ═══════════════════════════════════════════════════════════
+//  THREE.JS SCENE
+// ═══════════════════════════════════════════════════════════
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x2a2a2a);
+scene.fog=new THREE.Fog(0x2a2a2a,12,45);
+
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,70);
+camera.position.set(0,1.6,0);
+
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance',precision:'mediump'});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.domElement.id='gameCanvas';
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xfff5e6,1.0));
+
+const wallMat   =new THREE.MeshLambertMaterial({color:0xd4a853});
+const floorMat  =new THREE.MeshLambertMaterial({color:0xc4956a});
+const ceilMat   =new THREE.MeshLambertMaterial({color:0xe8d5a3});
+const lightMat  =new THREE.MeshBasicMaterial({color:0xffffaa});
+
+const WALL_H=3.0,CELL=4.0,RDIST=24,UDIST=32,PRAD=0.4;
+
+const wallGeo =new THREE.BoxGeometry(CELL,WALL_H,CELL);
+const floorGeo=new THREE.PlaneGeometry(CELL,CELL);
+const lightGeo=new THREE.BoxGeometry(1.0,.05,.2);
+
+const wallPool=[],fcPool=[],lPool=[];
+const active=new Map();
+const allLights=[];
+
+function getW(){ if(wallPool.length)return wallPool.pop(); const m=new THREE.Mesh(wallGeo,wallMat);scene.add(m);return m; }
+function getFC(c){ if(fcPool.length){const m=fcPool.pop();m.rotation.x=c?Math.PI/2:-Math.PI/2;return m;} const m=new THREE.Mesh(floorGeo,c?ceilMat:floorMat);m.rotation.x=c?Math.PI/2:-Math.PI/2;scene.add(m);return m; }
+function getL(){ if(lPool.length)return lPool.pop(); const m=new THREE.Mesh(lightGeo,lightMat);scene.add(m);return m; }
+function ret(pool,o){if(o){o.visible=false;pool.push(o);}}
+
+function isWall(cx,cz){
+  if(cx%2===0&&cz%2===0)return true;
+  if(cx%2===0||cz%2===0)return(Math.abs((cx*374761393+cz*668265263)^0x5bf03635)%1000)<380;
+  return false;
+}
+function inWall(wx,wz){return isWall(Math.round(wx/CELL),Math.round(wz/CELL));}
+function resolveMove(px,pz,dx,dz){
+  const r=PRAD;
+  const offs=[[r,0],[-r,0],[0,r],[0,-r],[r*.7,r*.7],[-r*.7,r*.7],[r*.7,-r*.7],[-r*.7,-r*.7]];
+  const blocked=(x,z)=>offs.some(([a,b])=>inWall(x+a,z+b));
+  if(!blocked(px+dx,pz+dz))return{x:px+dx,z:pz+dz};
+  if(!blocked(px+dx,pz))   return{x:px+dx,z:pz};
+  if(!blocked(px,pz+dz))   return{x:px,z:pz+dz};
+  return{x:px,z:pz};
+}
+
+function genChunk(cx,cz){
+  const key=`${cx},${cz}`;if(active.has(key))return;
+  const wx=cx*CELL,wz=cz*CELL,w=isWall(cx,cz);
+  const fl=getFC(false);fl.position.set(wx,.01,wz);fl.visible=true;
+  const ce=getFC(true);ce.position.set(wx,WALL_H-.01,wz);ce.visible=true;
+  const chunk={cellX:cx,cellZ:cz,floor:fl,ceiling:ce,wall:null,light:null};
+  if(w){const wm=getW();wm.position.set(wx,WALL_H/2,wz);wm.visible=true;chunk.wall=wm;}
+  else{const lm=getL();lm.position.set(wx,WALL_H-.15,wz);lm.visible=true;chunk.light=lm;allLights.push(lm);}
+  active.set(key,chunk);
+}
+function remChunk(key){
+  const c=active.get(key);if(!c)return;
+  ret(fcPool,c.floor);ret(fcPool,c.ceiling);
+  if(c.wall)ret(wallPool,c.wall);
+  if(c.light){const i=allLights.indexOf(c.light);if(i!==-1)allLights.splice(i,1);ret(lPool,c.light);}
+  active.delete(key);
+}
+function updateChunks(px,pz){
+  const ccx=Math.round(px/CELL),ccz=Math.round(pz/CELL);
+  const rc=Math.ceil(RDIST/CELL)+1;
+  for(let dx=-rc;dx<=rc;dx++)for(let dz=-rc;dz<=rc;dz++){
+    const cx=ccx+dx,cz=ccz+dz;
+    if(Math.hypot(cx*CELL-px,cz*CELL-pz)<=RDIST)genChunk(cx,cz);
+  }
+  const rem=[];
+  for(const[k,c]of active)if(Math.hypot(c.cellX*CELL-px,c.cellZ*CELL-pz)>UDIST)rem.push(k);
+  rem.forEach(k=>remChunk(k));
+}
+
+// ── GHOSTS ────────────────────────────────────────────────
+const ghostGeo=new THREE.CylinderGeometry(.28,.28,1.5,8);
+const ghosts={};
+function ensureGhost(uid,uname,cidx){
+  if(ghosts[uid])return;
+  const mat=new THREE.MeshLambertMaterial({color:colorForIdx(cidx)});
+  const mesh=new THREE.Mesh(ghostGeo,mat);
+  mesh.position.set(0,-100,0);
+  scene.add(mesh);
+  const label=document.createElement('div');
+  label.className='player-label';
+  label.textContent=uname;
+  document.body.appendChild(label);
+  ghosts[uid]={mesh,label};
+}
+function removeGhost(uid){
+  if(!ghosts[uid])return;
+  scene.remove(ghosts[uid].mesh);
+  ghosts[uid].label.remove();
+  delete ghosts[uid];
+}
+function updateLabels(){
+  for(const uid of Object.keys(ghosts)){
+    const g=ghosts[uid];
+    const p=g.mesh.position.clone();p.y+=1.2;
+    const v=p.project(camera);
+    if(v.z>1){g.label.style.display='none';continue;}
+    g.label.style.display='';
+    g.label.style.left=((v.x+1)/2*innerWidth)+'px';
+    g.label.style.top=((-v.y+1)/2*innerHeight)+'px';
+  }
+}
+
+// ── CONTROLS ─────────────────────────────────────────────
+const hud=$('hud'),joystickBase=$('joystickBase'),joystickThumb=$('joystickThumb'),lookArea=$('lookArea');
+let moveDir={x:0,z:0},isLocked=false,joystickActive=false,joystickId=null;
+let lookId=null,lastLX=0,lastLY=0;
+let euler=new THREE.Euler(0,0,0,'YXZ');
+const PI_2=Math.PI/2;
+const keys={};
+
+renderer.domElement.addEventListener('click',()=>{if(innerWidth>1024&&!isLocked)renderer.domElement.requestPointerLock();});
+document.addEventListener('pointerlockchange',()=>{isLocked=document.pointerLockElement===renderer.domElement;});
+document.addEventListener('mousemove',e=>{
+  if(!isLocked||!gameStarted)return;
+  euler.setFromQuaternion(camera.quaternion);
+  euler.y-=e.movementX*.002;euler.x-=e.movementY*.002;
+  euler.x=Math.max(-PI_2,Math.min(PI_2,euler.x));
+  camera.quaternion.setFromEuler(euler);
+});
+document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+joystickBase.addEventListener('pointerdown',e=>{if(!gameStarted)return;joystickActive=true;joystickId=e.pointerId;joystickBase.setPointerCapture(e.pointerId);updJoy(e);});
+joystickBase.addEventListener('pointermove',e=>{if(joystickActive&&e.pointerId===joystickId)updJoy(e);});
+const resetJoy=()=>{joystickActive=false;joystickId=null;moveDir.x=0;moveDir.z=0;joystickThumb.style.transform='translate(-50%,-50%)';};
+joystickBase.addEventListener('pointerup',resetJoy);
+joystickBase.addEventListener('pointercancel',resetJoy);
+function updJoy(e){
+  const r=joystickBase.getBoundingClientRect();
+  let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+  const d=Math.hypot(dx,dy),mx=r.width/2;
+  if(d>mx){dx=dx/d*mx;dy=dy/d*mx;}
+  joystickThumb.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
+  moveDir.x=dx/mx;moveDir.z=dy/mx;
+}
+lookArea.addEventListener('pointerdown',e=>{if(!gameStarted)return;lookId=e.pointerId;lookArea.setPointerCapture(e.pointerId);lastLX=e.clientX;lastLY=e.clientY;});
+lookArea.addEventListener('pointermove',e=>{
+  if(e.pointerId!==lookId)return;
+  const dx=e.clientX-lastLX,dy=e.clientY-lastLY;
+  lastLX=e.clientX;lastLY=e.clientY;
+  euler.setFromQuaternion(camera.quaternion);
+  euler.y-=dx*.003;euler.x-=dy*.003;
+  euler.x=Math.max(-PI_2,Math.min(PI_2,euler.x));
+  camera.quaternion.setFromEuler(euler);
+});
+lookArea.addEventListener('pointerup',()=>lookId=null);
+lookArea.addEventListener('pointercancel',()=>lookId=null);
+document.addEventListener('gesturestart',e=>e.preventDefault());
+document.addEventListener('gesturechange',e=>e.preventDefault());
+document.addEventListener('gestureend',e=>e.preventDefault());
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+// ── GAME LOOP ─────────────────────────────────────────────
+const clock=new THREE.Clock();
+let flickerT=0,lastChunkT=0,lastPosT=0;
+
+(function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.1);
+
+  if(gameStarted){
+    let mx=moveDir.x,mz=moveDir.z;
+    if(keys.w||keys.arrowup)   mz-=1;
+    if(keys.s||keys.arrowdown) mz+=1;
+    if(keys.a||keys.arrowleft) mx-=1;
+    if(keys.d||keys.arrowright)mx+=1;
+    if(mx||mz){
+      const len=Math.hypot(mx,mz);if(len>1){mx/=len;mz/=len;}
+      const spd=4.5*dt;
+      const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+      const rgt=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);
+      fwd.y=0;rgt.y=0;fwd.normalize();rgt.normalize();
+      const ddx=(fwd.x*-mz+rgt.x*mx)*spd,ddz=(fwd.z*-mz+rgt.z*mx)*spd;
+      const res=resolveMove(camera.position.x,camera.position.z,ddx,ddz);
+      camera.position.x=res.x;camera.position.z=res.z;
+      camera.position.y=1.6+Math.sin(Date.now()*.01)*.02;
+    } else { camera.position.y+=(1.6-camera.position.y)*.1; }
+
+    const now=performance.now();
+    if(now-lastChunkT>400){updateChunks(camera.position.x,camera.position.z);lastChunkT=now;}
+    if(myPosRef&&now-lastPosT>80){
+      set(myPosRef,{x:+camera.position.x.toFixed(3),z:+camera.position.z.toFixed(3),ry:+euler.y.toFixed(4)});
+      lastPosT=now;
+    }
+    updateLabels();
+  }
+
+  flickerT-=dt;
+  if(flickerT<=0&&allLights.length>0){
+    const l=allLights[Math.floor(Math.random()*allLights.length)];
+    if(l.material){l.material.color.setHex(0x888844);setTimeout(()=>{if(l.material)l.material.color.setHex(0xffffaa);},80);}
+    flickerT=.2+Math.random()*.4;
+  }
+  renderer.render(scene,camera);
+})();
+
+// ═══════════════════════════════════════════════════════════
+//  UI / AUTH / PARTY
+// ═══════════════════════════════════════════════════════════
+
+function showLobby(){
+  hide('overlayLoading');hide('overlayWaiting');hide('overlayAccount');hide('overlayImposter');
+  show('overlayParty');
+  $('lobbyUsername').textContent=localUser.username;
+  const btn=$('accountBtn');
+  btn.style.display='block';
+  btn.textContent=localUser.isGuest?'👤 Account':'👤 '+localUser.username;
+}
+
+const initUser = () => {
+  const saved = localStorage.getItem('backrooms_user');
+  if (saved) {
+    try {
+      localUser = JSON.parse(saved);
+    } catch(e) {
+      const n=Math.floor(1000+Math.random()*9000);
+      localUser={uid:'g_'+n,username:'Guest'+n,isGuest:true};
+    }
+  } else {
+    const n=Math.floor(1000+Math.random()*9000);
+    localUser={uid:'g_'+n,username:'Guest'+n,isGuest:true};
+  }
+  $('accountBtn').textContent = localUser.isGuest ? '👤 Account' : '👤 ' + localUser.username;
+  showLobby();
+};
+initUser();
+
+$('accountBtn').addEventListener('click',()=>{
+  if(!localUser.isGuest){
+    if(confirm(`Log out as ${localUser.username}?`)){
+      localStorage.removeItem('backrooms_user');
+      const n=Math.floor(1000+Math.random()*9000);
+      localUser={uid:'g_'+n,username:'Guest'+n,isGuest:true};
+      $('accountBtn').textContent = '👤 Account';
+    }
+  } else {
+    $('accountBtn').style.display = 'none';
+    hide('overlayParty');show('overlayAccount');
+  }
+});
+
+$('btnSubmitAcc').addEventListener('click', async()=>{
+  const u=$('accUser').value.trim();
+  const p=$('accPass').value;
+  $('accErr').textContent='';
+  
+  if(u.length<3||u.length>16){$('accErr').textContent='Username must be 3–16 characters.';return;}
+  if(!/^[a-zA-Z0-9_]+$/.test(u)){$('accErr').textContent='Letters, numbers, underscores only.';return;}
+  if(p.length<6){$('accErr').textContent='Password must be at least 6 characters.';return;}
+  
+  $('btnSubmitAcc').textContent='Processing…';
+  
+  try{
+    const uid = 'user_' + u.toLowerCase();
+    const userRef = ref(db, `users/${uid}`);
+    const snap = await get(userRef);
+    
+    if(snap.exists()){
+      const userData = snap.val();
+      if(userData.password !== p){
+        $('accErr').textContent='Incorrect password.';
+        $('btnSubmitAcc').textContent='Continue';
+        return;
+      }
+      localUser={uid:uid,username:userData.username,isGuest:false};
+    } else {
+      const taken=await get(ref(db,`usernames/${u.toLowerCase()}`));
+      if(taken.exists()){$('accErr').textContent='That username is already taken.';$('btnSubmitAcc').textContent='Continue';return;}
+      
+      await set(userRef, { username: u, password: p });
+      await set(ref(db, `usernames/${u.toLowerCase()}`), uid);
+      
+      localUser={uid:uid,username:u,isGuest:false};
+    }
+    
+    localStorage.setItem('backrooms_user', JSON.stringify(localUser));
+    hide('overlayAccount');
+    $('accountBtn').style.display = 'block';
+    showLobby();
+    
+  }catch(e){
+    $('accErr').textContent=e.message||'Something went wrong.';
+  }
+  $('btnSubmitAcc').textContent='Continue';
+});
+
+$('btnCloseAccount').addEventListener('click',()=>{
+  hide('overlayAccount');
+  $('accountBtn').style.display='block';
+  showLobby();
+});
+
+$('btnMakeParty').addEventListener('click',async()=>{
+  hide('overlayParty');
+  partyCode=randCode();
+  isHost=true;
+  await joinPartyRoom(partyCode);
+});
+
+$('btnJoinParty').addEventListener('click',()=>{
+  const s=$('joinSection');
+  s.style.display=s.style.display==='flex'?'none':'flex';
+});
+$('btnDoJoin').addEventListener('click',async()=>{
+  const code=$('joinCodeInput').value.trim();
+  $('joinErr').textContent='';
+  if(!/^\d{4}$/.test(code)){$('joinErr').textContent='Enter a 4-digit code.';return;}
+  const snap=await get(ref(db,`parties/${code}`));
+  if(!snap.exists()){$('joinErr').textContent='Party not found.';return;}
+  if(snap.val().status==='playing'){$('joinErr').textContent='Game already in progress.';return;}
+  hide('overlayParty');
+  partyCode=code;isHost=false;
+  await joinPartyRoom(partyCode);
+});
+
+async function joinPartyRoom(code){
+  partyRef=ref(db,`parties/${code}`);
+  const memberRef=ref(db,`parties/${code}/members/${localUser.uid}`);
+  myPosRef=ref(db,`parties/${code}/positions/${localUser.uid}`);
+
+  let cidx=0;
+  try{ const s=await get(ref(db,`parties/${code}/members`)); cidx=s.exists()?Object.keys(s.val()).length:0; }catch(_){}
+
+  const memberData={username:localUser.username,isHost,joinedAt:Date.now(),colorIdx:cidx};
+
+  if(isHost){
+    await set(partyRef,{code,status:'waiting',createdAt:Date.now(),isPublic:false,
+      members:{[localUser.uid]:memberData}});
+  } else {
+    await set(memberRef,memberData);
+  }
+
+  onDisconnect(memberRef).remove();
+  onDisconnect(myPosRef).remove();
+  if(isHost)onDisconnect(ref(db,`parties/${code}/status`)).set('disbanded');
+
+  showWaitingRoom(code);
+}
+
+function showWaitingRoom(code){
+  hide('overlayParty');show('overlayWaiting');
+  $('codeDisplay').textContent=code;
+  $('waitingTitle').textContent=isHost?'🏠 Your Party':'🔗 Joined Party';
+  const startBtn=$('btnStartGame');
+  startBtn.style.display=isHost?'':'none';
+  $('waitStatus').textContent=isHost?'Waiting for friends to join…':'Waiting for host to start…';
+  
+  const hostSettings = $('hostSettings');
+  hostSettings.style.display = isHost ? 'flex' : 'none';
+
+  if(partyListener){off(partyRef,'value',partyListener);partyListener=null;}
+  partyListener=onValue(partyRef,snap=>{
+    const data=snap.val();
+    if(!data){leaveParty();return;}
+    const members=data.members||{};
+    
+    if(isHost && $('togglePublic')) {
+      $('togglePublic').checked = data.isPublic || false;
+    }
+    
+    const list=$('playerList');list.innerHTML='';
+    let idx=0;
+    for(const [uid,m] of Object.entries(members)){
+      const li=document.createElement('li');
+      const dot=document.createElement('div');dot.className='dot';
+      dot.style.background=hexCss(colorForIdx(m.colorIdx??idx));
+      li.appendChild(dot);
+      li.appendChild(document.createTextNode(m.username+(uid===localUser.uid?' (you)':'')));
+      if(m.isHost){const cr=document.createElement('span');cr.className='crown';cr.textContent='👑 HOST';li.appendChild(cr);}
+      list.appendChild(li);idx++;
+    }
+    
+    if(data.status==='imposter_roulette' && !gameStarted && !$('overlayImposter').classList.contains('show')){
+      hide('overlayWaiting');
+      show('overlayImposter');
+      startRouletteAnimation(members, data.imposters || []);
+    }
+    
+    if(data.status==='playing'&&!gameStarted){
+      const offset=Object.keys(members).indexOf(localUser.uid);
+      startGame(data,offset);
+    }
+  });
+}
+
+$('togglePublic').addEventListener('change', async (e) => {
+  if(isHost && partyCode) {
+    await update(ref(db, `parties/${partyCode}`), { isPublic: e.target.checked });
+  }
+});
+
+$('btnStartGame').addEventListener('click',async()=>{
+  if(!isHost||!partyCode)return;
+  
+  const impCount = parseInt($('imposterCountInput').value) || 1;
+  const membersSnap = await get(ref(db, `parties/${partyCode}/members`));
+  const members = membersSnap.val() || {};
+  const uids = Object.keys(members);
+  
+  if(impCount >= uids.length) {
+    alert("Imposter count must be less than total players!");
+    return;
+  }
+  if(impCount < 1) {
+    alert("Must have at least 1 imposter!");
+    return;
+  }
+  
+  const shuffled = uids.sort(() => 0.5 - Math.random());
+  const imposters = shuffled.slice(0, impCount);
+  
+  await update(ref(db, `parties/${partyCode}`), {
+    status: 'imposter_roulette',
+    imposters: imposters,
+    imposterCount: impCount
+  });
+});
+
+async function runSingleRoulette(targetUid, uids, elements, statusEl, members, impIdx, totalImps) {
+  statusEl.textContent = `Selecting Imposter ${impIdx + 1}...`;
+  
+  let steps = 20 + Math.floor(Math.random() * 15);
+  let delay = 50;
+  
+  for(let i = 0; i < steps; i++) {
+    Object.values(elements).forEach(el => {
+      el.style.background = "rgba(255,255,255,0.05)";
+      el.style.color = "#ddd";
+      el.style.transform = "scale(1)";
+      el.style.boxShadow = "none";
+    });
+    
+    const currUid = uids[i % uids.length];
+    elements[currUid].style.background = "var(--gold)";
+    elements[currUid].style.color = "#000";
+    elements[currUid].style.transform = "scale(1.05)";
+    
+    await new Promise(r => setTimeout(r, delay));
+    
+    if(i > steps * 0.6) delay += 20;
+    if(i > steps * 0.8) delay += 40;
+  }
+  
+  Object.values(elements).forEach(el => {
+    el.style.background = "rgba(255,255,255,0.05)";
+    el.style.color = "#ddd";
+    el.style.transform = "scale(1)";
+    el.style.boxShadow = "none";
+  });
+  
+  elements[targetUid].style.background = "var(--red)";
+  elements[targetUid].style.color = "#fff";
+  elements[targetUid].style.transform = "scale(1.1)";
+  elements[targetUid].style.boxShadow = "0 0 15px var(--red)";
+  statusEl.textContent = `${members[targetUid].username} is an IMPOSTER!`;
+  
+  await new Promise(r => setTimeout(r, 2500));
+}
+
+async function startRouletteAnimation(members, imposters) {
+  const list = $('rouletteList');
+  list.innerHTML = '';
+  const statusEl = $('rouletteStatus');
+  statusEl.textContent = '';
+  
+  const uids = Object.keys(members);
+  const elements = {};
+  uids.forEach(uid => {
+    const div = document.createElement('div');
+    div.style.cssText = "padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; text-align:center; color:#ddd; font-size:16px; transition: all 0.1s;";
+    div.textContent = members[uid].username + (uid === localUser.uid ? ' (You)' : '');
+    list.appendChild(div);
+    elements[uid] = div;
+  });
+  
+  for(let i = 0; i < imposters.length; i++) {
+    await runSingleRoulette(imposters[i], uids, elements, statusEl, members, i, imposters.length);
+  }
+  
+  statusEl.textContent = "Game Starting...";
+  await new Promise(r => setTimeout(r, 1500));
+  
+  if(isHost) {
+    await update(ref(db, `parties/${partyCode}`), {status: 'playing'});
+  }
+  
+  hide('overlayImposter');
+  const offset = uids.indexOf(localUser.uid);
+  startGame({members: members}, offset);
+}
+
+function findSpawn(){
+  let sx=0,sz=0;
+  for(let a=0;a<30;a++){if(!isWall(Math.round(sx/CELL),Math.round(sz/CELL)))break;sx+=CELL;}
+  return{sx,sz};
+}
+
+function startGame(partyData,spawnOffset){
+  gameStarted=true;
+  hide('overlayWaiting');
+
+  let{sx,sz}=findSpawn();
+  sx+=spawnOffset*CELL;
+  for(let a=0;a<10;a++){if(!isWall(Math.round(sx/CELL),Math.round(sz/CELL)))break;sx+=CELL;}
+  camera.position.set(sx,1.6,sz);
+  updateChunks(sx,sz);
+
+  const tap=$('tapOverlay');
+  tap.classList.add('show');
+  tap.addEventListener('click',()=>{
+    const el=document.documentElement;
+    const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;
+    if(req)req.call(el).catch(()=>{});
+    tap.classList.remove('show');
+    hud.innerHTML='📱 LEFT = MOVE &nbsp;•&nbsp; RIGHT = LOOK';
+  },{once:true});
+
+  hud.innerHTML='BACKROOMS • '+partyCode;
+
+  const members=partyData.members||{};
+  let i=0;
+  for(const [uid,m] of Object.entries(members)){
+    if(uid!==localUser.uid)ensureGhost(uid,m.username,m.colorIdx??i);i++;
+  }
+
+  onValue(ref(db,`parties/${partyCode}/members`),snap=>{
+    const mems=snap.val()||{};
+    let j=0;
+    for(const [uid,m] of Object.entries(mems)){if(uid!==localUser.uid)ensureGhost(uid,m.username,m.colorIdx??j);j++;}
+    for(const uid of Object.keys(ghosts)){if(!mems[uid])removeGhost(uid);}
+  });
+
+  onValue(ref(db,`parties/${partyCode}/positions`),snap=>{
+    const pos=snap.val()||{};
+    for(const [uid,p] of Object.entries(pos)){
+      if(uid===localUser.uid)continue;
+      if(ghosts[uid]){ghosts[uid].mesh.position.set(p.x,1.0,p.z);ghosts[uid].mesh.rotation.y=p.ry||0;ghosts[uid].mesh.visible=true;}
+    }
+  });
+}
+
+async function leaveParty(){
+  if(partyListener){off(partyRef,'value',partyListener);partyListener=null;}
+  if(partyCode&&localUser){
+    await remove(ref(db,`parties/${partyCode}/members/${localUser.uid}`)).catch(()=>{});
+    if(myPosRef)await remove(myPosRef).catch(()=>{});
+  }
+  for(const uid of Object.keys(ghosts))removeGhost(uid);
+  partyCode=null;isHost=false;gameStarted=false;
+  moveDir={x:0,z:0};
+  $('tapOverlay').classList.remove('show');
+  showLobby();
+}
+$('btnLeaveParty').addEventListener('click',leaveParty);
+
+</script>
+</body>
+</html>
