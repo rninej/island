@@ -221,24 +221,11 @@
 </div>
 <div id="lookArea"></div>
 
-<script>
-// Tab switcher (plain JS so it works before module loads)
-function switchTab(t){
-  document.getElementById('tabRegister').classList.toggle('active', t==='register');
-  document.getElementById('tabLogin').classList.toggle('active', t==='login');
-  document.getElementById('bodyRegister').classList.toggle('active', t==='register');
-  document.getElementById('bodyLogin').classList.toggle('active', t==='login');
-}
-</script>
-
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.157.0/build/three.module.js"}}</script>
 
 <script type="module">
 import * as THREE from 'three';
 import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-         onAuthStateChanged, signOut }
-  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getDatabase, ref, set, get, onValue, off, remove, update, onDisconnect }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 
@@ -252,7 +239,6 @@ const app = initializeApp({
   messagingSenderId:"346334983204",
   appId:"1:346334983204:web:a31173e4c31c965a0714b1"
 });
-const auth = getAuth(app);
 const db   = getDatabase(app);
 
 // ── HELPERS ───────────────────────────────────────────────
@@ -262,11 +248,6 @@ const hide = id => { const e=$(id); e.style.display='none'; e.classList.remove('
 
 // 4-digit numeric party codes
 function randCode(){ return String(Math.floor(1000+Math.random()*9000)); }
-
-// Build a stable fake email from username for Firebase Auth
-function fakeEmail(u){
-  return u.trim().toLowerCase().replace(/[^a-z0-9]/g,'x') + '.br@backrooms.game';
-}
 
 // ── PLAYER COLOURS ────────────────────────────────────────
 const COLORS=[0xff4444,0x44aaff,0x55ff99,0xff8844,0xcc44ff,0xffff44,0x44ffff,0xff44cc];
@@ -501,23 +482,33 @@ function showLobby(){
   btn.textContent=localUser.isGuest?'👤 Create Account':'👤 '+localUser.username;
 }
 
-// Auth state
-onAuthStateChanged(auth, async fireUser=>{
-  if(fireUser){
-    const snap=await get(ref(db,`users/${fireUser.uid}/username`));
-    const uname=snap.val()||'Player';
-    localUser={uid:fireUser.uid,username:uname,isGuest:false};
+// Initialize User (Replaces Firebase Auth onAuthStateChanged)
+const initUser = () => {
+  const saved = localStorage.getItem('backrooms_user');
+  if (saved) {
+    try {
+      localUser = JSON.parse(saved);
+    } catch(e) {
+      const n=Math.floor(1000+Math.random()*9000);
+      localUser={uid:'g_'+n,username:'Guest'+n,isGuest:true};
+    }
   } else {
     const n=Math.floor(1000+Math.random()*9000);
     localUser={uid:'g_'+n,username:'Guest'+n,isGuest:true};
   }
   showLobby();
-});
+};
+initUser();
 
 // Account button
 $('accountBtn').addEventListener('click',()=>{
   if(!localUser.isGuest){
-    if(confirm(`Log out as ${localUser.username}?`))signOut(auth);
+    if(confirm(`Log out as ${localUser.username}?`)){
+      localStorage.removeItem('backrooms_user');
+      const n=Math.floor(1000+Math.random()*9000);
+      localUser={uid:'g_'+n,username:'Guest'+n,isGuest:true};
+      showLobby();
+    }
   } else {
     hide('overlayParty');show('overlayAccount');
   }
@@ -536,18 +527,23 @@ $('btnCreateAcc').addEventListener('click', async()=>{
     // Check username uniqueness
     const taken=await get(ref(db,`usernames/${u.toLowerCase()}`));
     if(taken.exists()){$('accErr').textContent='That username is already taken.';$('btnCreateAcc').textContent='Create Account';return;}
-    const email=fakeEmail(u);
-    const cred=await createUserWithEmailAndPassword(auth,email,p);
-    // Write username records
-    await set(ref(db,`users/${cred.user.uid}/username`),u);
-    await set(ref(db,`usernames/${u.toLowerCase()}`),cred.user.uid);
-    localUser={uid:cred.user.uid,username:u,isGuest:false};
+    
+    const uid = 'user_' + u.toLowerCase();
+    
+    // Write directly to database (same logic as party creation)
+    await set(ref(db, `users/${uid}`), {
+      username: u,
+      password: p
+    });
+    await set(ref(db, `usernames/${u.toLowerCase()}`), uid);
+    
+    localUser={uid:uid,username:u,isGuest:false};
+    localStorage.setItem('backrooms_user', JSON.stringify(localUser));
+    
     hide('overlayAccount');
     showLobby();
   }catch(e){
     let msg=e.message||'Something went wrong.';
-    if(e.code==='auth/email-already-in-use')msg='That username is already registered.';
-    if(e.code==='auth/invalid-email')msg='Internal error – try a different username.';
     $('accErr').textContent=msg;
   }
   $('btnCreateAcc').textContent='Create Account';
@@ -560,10 +556,29 @@ $('btnLogin').addEventListener('click', async()=>{
   if(!u||!p){$('loginErr').textContent='Enter username and password.';return;}
   $('btnLogin').textContent='Logging in…';
   try{
-    await signInWithEmailAndPassword(auth,fakeEmail(u),p);
+    const uid = 'user_' + u.toLowerCase();
+    const snap = await get(ref(db, `users/${uid}`));
+    
+    if(!snap.exists()){
+      $('loginErr').textContent='Incorrect username or password.';
+      $('btnLogin').textContent='Log In';
+      return;
+    }
+    
+    const userData = snap.val();
+    if(userData.password !== p){
+      $('loginErr').textContent='Incorrect username or password.';
+      $('btnLogin').textContent='Log In';
+      return;
+    }
+    
+    localUser={uid:uid,username:userData.username,isGuest:false};
+    localStorage.setItem('backrooms_user', JSON.stringify(localUser));
+    
     hide('overlayAccount');
+    showLobby();
   }catch(e){
-    $('loginErr').textContent='Incorrect username or password.';
+    $('loginErr').textContent='Error logging in.';
   }
   $('btnLogin').textContent='Log In';
 });
